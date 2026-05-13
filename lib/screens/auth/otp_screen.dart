@@ -5,7 +5,12 @@ import '../../services/auth_service.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phone;
-  const OtpScreen({required this.phone, super.key});
+  final String fullName;
+  const OtpScreen({
+    required this.phone,
+    required this.fullName,
+    super.key,
+  });
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -89,7 +94,14 @@ class _OtpScreenState extends State<OtpScreen> {
 
                   if (success) {
                     Fluttertoast.showToast(msg: "Xác thực OTP thành công!");
-                    Navigator.pushNamed(context, '/set-password', arguments: widget.phone);
+                    Navigator.pushNamed(
+                      context,
+                      '/set-password',
+                      arguments: {
+                        'phone': widget.phone,
+                        'fullName': widget.fullName,
+                      },
+                    );
                   } else {
                     Fluttertoast.showToast(msg: "OTP không đúng hoặc đã hết hạn");
                   }
