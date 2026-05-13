@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://192.168.1.16:5098/api/auth';
+  static const String baseUrl = 'http://10.0.2.2:5257/api/Auth';
 
   Future<bool> sendOtp(String phone) async {
     print("🔥 Gọi API send-otp với phone: $phone");
@@ -41,40 +41,77 @@ class AuthService {
     return response.statusCode == 200;
   }
 
-  Future<bool> register(String phone, String password, String fullName) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'phone': phone,
-        'password': password,
-        'fullName': fullName,
-        'role': 'Patient'
-      }),
-    );
-    if (response.statusCode == 200) {
+  Future<bool> register(
+      String phone,
+      String password,
+      String fullName,
+      ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/register'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'phone': phone,
+          'password': password,
+          'fullName': fullName,
+          'role': 'P',
+        }),
+      );
+
       final data = jsonDecode(response.body);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', data['token']);
-      await prefs.setString('role', data['role']);
-      return true;
+
+      if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+
+        // Lưu token
+        await prefs.setString('token', data['token']);
+
+        // Lưu role
+        await prefs.setString('role', data['role']);
+
+        // Lưu tên người dùng
+        await prefs.setString('fullName', data['fullName']);
+
+        return true;
+      } else {
+        print('Register failed: ${data['message']}');
+        return false;
+      }
+    } catch (e) {
+      print('Register error: $e');
+      return false;
     }
-    return false;
   }
+
 
   Future<bool> login(String phone, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'phone': phone, 'password': password}),
+      body: jsonEncode({
+        'phone': phone,
+        'password': password,
+      }),
     );
+
+    print("URL: $baseUrl");
+    print("Phone: $phone");
+    print("Password: $password");
+    print("Status code: ${response.statusCode}");
+    print("Response body: ${response.body}");
+
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', data['token']);
       await prefs.setString('role', data['role']);
+
       return true;
     }
+
     return false;
   }
 }

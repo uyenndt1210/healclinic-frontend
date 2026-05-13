@@ -4,6 +4,7 @@ import 'screens/auth/register_phone_screen.dart';
 import 'screens/auth/otp_screen.dart';
 import 'screens/auth/set_password_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/patient_view/home_patient_view.dart';
 
 void main() {
   runApp(const MyApp());
@@ -26,14 +27,30 @@ class MyApp extends StatelessWidget {
         '/': (context) => const WelcomeScreen(),
         '/register': (context) => const RegisterPhoneScreen(),
         '/otp': (context) {
-          final phone = ModalRoute.of(context)!.settings.arguments as String;
-          return OtpScreen(phone: phone);
+          final args =
+          ModalRoute.of(context)!
+              .settings
+              .arguments as Map<String, dynamic>;
+
+          return OtpScreen(
+            phone: args['phone'],
+            fullName: args['fullName'],
+          );
         },
         '/set-password': (context) {
-          final phone = ModalRoute.of(context)!.settings.arguments as String;
-          return SetPasswordScreen(phone: phone);
+          final args =
+          ModalRoute.of(context)!
+              .settings
+              .arguments as Map<String, dynamic>;
+
+          return SetPasswordScreen(
+            phone: args['phone'],
+            fullName: args['fullName'],
+          );
         },
         '/login': (context) => const LoginScreen(),
+        '/home': (context) => const HomePatientScreen(),
+        '/home_D': (context) => const Text("Thêm layout bác sĩ vô"),
       },
     );
   }

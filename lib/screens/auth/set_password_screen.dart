@@ -4,7 +4,12 @@ import '../../services/auth_service.dart';
 
 class SetPasswordScreen extends StatefulWidget {
   final String phone;
-  const SetPasswordScreen({required this.phone, super.key});
+  final String fullName;
+  const SetPasswordScreen({
+    required this.phone,
+    required this.fullName,
+    super.key,
+  });
 
   @override
   State<SetPasswordScreen> createState() => _SetPasswordScreenState();
@@ -136,9 +141,9 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                     }
 
                     final success = await _authService.register(
-                      widget.phone,
-                      _passwordController.text,
-                      "Người dùng mới", // bạn có thể thêm fullName sau
+                      widget.phone.trim(),
+                      _passwordController.text.trim(),
+                      widget.fullName, // bạn có thể thêm fullName sau
                     );
 
                     setState(() => _isLoading = false);
