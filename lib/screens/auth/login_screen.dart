@@ -174,11 +174,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () {
-                      Fluttertoast.showToast(
-                        msg: "Chức năng quên mật khẩu đang phát triển",
-                      );
-                    },
+                    onPressed: ()
+                     => Navigator.pushNamed(context, '/forgotPass'),
                     child: const Text(
                       "Quên mật khẩu?",
                       style: TextStyle(
@@ -280,11 +277,11 @@ class _LoginScreenState extends State<LoginScreen> {
       Fluttertoast.showToast(msg: "Đăng nhập thành công!");
 
       if (role == 'P') {
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       } else if (role == 'D') {
-        Navigator.pushReplacementNamed(context, '/home_D');
+        Navigator.pushNamedAndRemoveUntil(context, '/home_D', (route) => false);
       } else {
-        Fluttertoast.showToast(msg: "Role không hợp lệ");
+        Fluttertoast.showToast(msg: "Role không hợp lệ: $role");
       }
     } else {
       Fluttertoast.showToast(

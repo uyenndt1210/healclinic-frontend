@@ -94,14 +94,18 @@ class _OtpScreenState extends State<OtpScreen> {
 
                   if (success) {
                     Fluttertoast.showToast(msg: "Xác thực OTP thành công!");
-                    Navigator.pushNamed(
-                      context,
-                      '/set-password',
-                      arguments: {
-                        'phone': widget.phone,
-                        'fullName': widget.fullName,
-                      },
-                    );
+                    if(widget.fullName.isEmpty){
+                      Navigator.pushNamed(context, '/resetPass', arguments: {'phone': widget.phone, 'fullName': ''});
+                    }else{
+                      Navigator.pushNamed(
+                        context,
+                        '/set-password',
+                        arguments: {
+                          'phone': widget.phone,
+                          'fullName': widget.fullName,
+                        },
+                      );
+                    }
                   } else {
                     Fluttertoast.showToast(msg: "OTP không đúng hoặc đã hết hạn");
                   }
