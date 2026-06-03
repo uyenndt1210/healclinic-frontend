@@ -179,4 +179,29 @@ class AppointmentService {
       return null;
     }
   }
+
+  // 🔥 ĐA THÊM: Hàm gọi API xóa hoàn toàn lịch hẹn khỏi database
+  Future<bool> cancelAppointment(int appointmentId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString("token");
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/Appointment/$appointmentId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      debugPrint("Cancel Appointment status code: ${response.statusCode}");
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return true; // Xóa thành công dưới SQL Server
+      }
+      return false;
+    } catch (e) {
+      debugPrint("Lỗi khi kết nối gọi API hủy lịch hẹn: $e");
+      return false;
+    }
+  }
 }
