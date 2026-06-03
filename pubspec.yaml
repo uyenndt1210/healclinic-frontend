@@ -30,14 +30,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.2.2                  # gọi API
-  shared_preferences: ^2.3.0    # lưu token, role
-  pinput: ^6.0.2       # ô nhập OTP đẹp
-  fluttertoast: ^8.2.8          # thông báo đẹp
+  http: ^1.2.2
+  shared_preferences: ^2.3.0
+  pinput: ^6.0.2
+  fluttertoast: ^8.2.8
   google_fonts: ^6.2.1
   cached_network_image: ^3.3.1
   flutter_svg: ^2.0.10
-  emailjs: ^4.0.0   #Tạo mail nhận phảm hồi
+  emailjs: ^4.0.0
   intl: ^0.20.2
   url_launcher: ^6.3.0
 

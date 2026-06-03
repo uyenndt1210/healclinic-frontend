@@ -16,7 +16,7 @@ class AuthService {
   }
 
   Future<bool> sendOtp(String phone) async {
-    print("🔥 Gọi API send-otp với phone: $phone");
+    print("Gọi API send-otp với phone: $phone");
     print("URL: $baseUrl/send-otp");
 
     try {
@@ -37,7 +37,7 @@ class AuthService {
         return false;
       }
     } catch (e) {
-      print("❌ LỖI KẾT NỐI: $e");
+      print("LỖI KẾT NỐI: $e");
       return false;
     }
   }

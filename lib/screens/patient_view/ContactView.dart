@@ -167,7 +167,7 @@ class _ContactPageState extends State<ContactPage> {
         url,
         headers: {
           'Content-Type': 'application/json',
-          'Origin': 'http://localhost', // Yêu cầu bắt buộc từ bảo mật EmailJS
+          'Origin': 'http://localhost',
         },
         body: jsonEncode({
           'service_id': 'service_d7kt02y',
@@ -178,7 +178,9 @@ class _ContactPageState extends State<ContactPage> {
             'email': emailController.text,
             'message': messageController.text,
             'title': 'Phản hồi từ ứng dụng',
-            'time': "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')} - ${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}",
+            'time': "${DateTime.now().hour.toString().padLeft(2, '0')}:"
+                "${DateTime.now().minute.toString().padLeft(2, '0')} - ${DateTime.now().day.toString().padLeft(2, '0')}/"
+                "${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}",
           }
         }),
       );
