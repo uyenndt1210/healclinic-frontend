@@ -38,20 +38,87 @@ class _AppointmentHistoryViewState extends State<AppointmentHistoryView> {
     });
   }
 
+  // 🔥 ĐA THÊM: Hàm hiển thị Pop-up xác nhận hủy và xử lý hiệu ứng Loading, đóng mở bất đồng bộ
+  void _showCancelDialog(BuildContext context, int appointmentId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+              SizedBox(width: 10),
+              Text("Xác nhận hủy lịch", style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: const Text(
+            "Bạn có chắc chắn muốn hủy lịch khám này không?",
+            style: TextStyle(fontSize: 14, color: AppColors.textDark),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext), // Đóng hộp thoại nếu bấm hủy bỏ
+              child: const Text("Đóng", style: TextStyle(color: AppColors.textMedium)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                Navigator.pop(dialogContext); // Đóng hộp thoại xác nhận trước
+
+                // Bật vòng xoay Loading khóa màn hình để người dùng không bấm loạn khi đang đợi API xử lý xóa
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(child: CircularProgressIndicator()),
+                );
+
+                // Gọi hàm Service bắn request DELETE xuống SQL Server
+                bool success = await _service.cancelAppointment(appointmentId);
+
+                if (context.mounted) {
+                  Navigator.pop(context); // Tắt vòng xoay tròn Loading ngầm
+
+                  // Tìm đoạn code xử lý hiển thị SnackBar khi thành công trong hàm _showCancelDialog và sửa lại:
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Đã hủy lịch khám thành công!"), // Thay đổi text cho đúng ngữ nghĩa
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                    _loadData(); // Tải lại danh sách (Lịch vừa hủy sẽ tự động biến mất khỏi giao diện)
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Hủy lịch khám thất bại. Vui lòng thử lại sau!"),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text("Xác nhận hủy", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Color _statusColor(String status) {
     switch (status) {
       case 'Chờ khám':
         return const Color(0xFFFFA726);
       case 'Đã khám':
         return const Color(0xFF66BB6A);
-      case 'Chờ xác nhận':
-        return const Color(0xFF42A5F5);
-      case 'Đã xác nhận':
-        return AppColors.primary;
       case 'Đã hủy':
         return const Color(0xFFEF5350);
       default:
-        return AppColors.textMedium;
+        return const Color(0xFF78909C);
     }
   }
 
@@ -60,30 +127,12 @@ class _AppointmentHistoryViewState extends State<AppointmentHistoryView> {
       case 'Chờ khám':
         return Icons.access_time_rounded;
       case 'Đã khám':
-        return Icons.check_circle_rounded;
-      case 'Chờ xác nhận':
-        return Icons.hourglass_top_rounded;
-      case 'Đã xác nhận':
-        return Icons.verified_rounded;
+        return Icons.check_circle_outline_rounded;
       case 'Đã hủy':
-        return Icons.cancel_rounded;
+        return Icons.cancel_outlined;
       default:
-        return Icons.info_outline_rounded;
+        return Icons.help_outline_rounded;
     }
-  }
-
-  String _formatDate(String rawDate) {
-    try {
-      final dt = DateTime.parse(rawDate);
-      return "${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}";
-    } catch (_) {
-      return rawDate;
-    }
-  }
-
-  String _formatPrice(double price) {
-    if (price == 0) return "Miễn phí";
-    return "${price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}đ";
   }
 
   @override
@@ -91,86 +140,42 @@ class _AppointmentHistoryViewState extends State<AppointmentHistoryView> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(
-          widget.onlyPending ? "Lịch hẹn sắp tới" : "Lịch sử khám",
-          style: const TextStyle(fontWeight: FontWeight.bold),
+        title: const Text(
+          "Lịch sử lịch đặt",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
-        backgroundColor: AppColors.white,
-        foregroundColor: AppColors.textDark,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.gradientStart, AppColors.gradientEnd],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         elevation: 0,
       ),
       body: FutureBuilder<List<Appointment>>(
         future: _appointmentFuture,
         builder: (context, snapshot) {
-          // Loading
           if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Lỗi: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
-          }
-
-          // Lỗi
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                  const SizedBox(height: 12),
-                  Text(
-                    "Đã xảy ra lỗi: ${snapshot.error}",
-                    style: const TextStyle(color: AppColors.textMedium),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: _loadData,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text("Thử lại"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.white,
-                    ),
-                  )
-                ],
+              child: Text(
+                'Không có cuộc hẹn nào.',
+                style: TextStyle(fontSize: 16, color: AppColors.textMedium),
               ),
             );
           }
 
-          // Trống
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    widget.onlyPending
-                        ? Icons.event_available_rounded
-                        : Icons.history_rounded,
-                    size: 72,
-                    color: AppColors.primary.withOpacity(0.3),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.onlyPending
-                        ? "Bạn chưa có lịch hẹn nào sắp tới"
-                        : "Chưa có lịch sử khám bệnh",
-                    style: const TextStyle(
-                      color: AppColors.textMedium,
-                      fontSize: 15,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // Có dữ liệu
           final appointments = snapshot.data!;
+
           return RefreshIndicator(
             onRefresh: () async => _loadData(),
-            color: AppColors.primary,
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               itemCount: appointments.length,
@@ -178,111 +183,113 @@ class _AppointmentHistoryViewState extends State<AppointmentHistoryView> {
                 final item = appointments[index];
                 final statusColor = _statusColor(item.status);
 
-                return InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AppointmentDetailView(
-                            appointmentId: item.appointmentId),
-                      ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AppointmentDetailView(appointmentId: item.appointmentId),
                         ),
-                      ],
-                    ),
-                    child: Padding(
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
                       padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                        border: Border.all(color: Colors.grey.shade100),
+                      ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Icon bác sĩ
                           Container(
-                            padding: const EdgeInsets.all(12),
+                            width: 5,
+                            height: 65,
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: const Icon(
-                              Icons.local_hospital_rounded,
-                              color: AppColors.primary,
-                              size: 24,
+                              color: statusColor,
+                              borderRadius: BorderRadius.circular(4),
                             ),
                           ),
                           const SizedBox(width: 14),
-                          // Thông tin
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "BS. ${item.doctorName}",
+                                  "Bác sĩ: ${item.doctorName}",
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
                                     fontSize: 15,
+                                    fontWeight: FontWeight.bold,
                                     color: AppColors.textDark,
                                   ),
                                 ),
                                 const SizedBox(height: 6),
                                 Row(
                                   children: [
-                                    const Icon(Icons.calendar_today_rounded,
-                                        size: 13, color: AppColors.textMedium),
-                                    const SizedBox(width: 4),
+                                    const Icon(Icons.calendar_today, size: 13, color: AppColors.textMedium),
+                                    const SizedBox(width: 6),
                                     Text(
-                                      _formatDate(item.appointmentDate),
-                                      style: const TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.textMedium),
-                                    ),
-                                    const SizedBox(width: 14),
-                                    const Icon(Icons.payments_outlined,
-                                        size: 13, color: AppColors.textMedium),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _formatPrice(item.price),
-                                      style: const TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.textMedium),
+                                      item.appointmentDate,
+                                      style: const TextStyle(fontSize: 13, color: AppColors.textMedium),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 10),
-                                // Badge trạng thái
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.12),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(_statusIcon(item.status),
-                                          size: 13, color: statusColor),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        item.status,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: statusColor,
+                                const SizedBox(height: 12),
+                                // Chân Card được thiết kế chia đôi không gian để đẩy nút Hủy về bên phải
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(_statusIcon(item.status), size: 13, color: statusColor),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            item.status,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: statusColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // 🔥 ĐÃ THÊM: Nút Hủy hiển thị vô cùng tinh tế ở góc dưới bên phải chiếc Card
+                                    if (item.status == 'Chờ khám')
+                                      TextButton.icon(
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                            side: BorderSide(color: Colors.red.shade200, width: 1),
+                                          ),
+                                          backgroundColor: Colors.red.shade50,
+                                        ),
+                                        onPressed: () => _showCancelDialog(context, item.appointmentId),
+                                        icon: const Icon(Icons.cancel_outlined, size: 14, color: Colors.red),
+                                        label: const Text(
+                                          "Hủy",
+                                          style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -290,8 +297,8 @@ class _AppointmentHistoryViewState extends State<AppointmentHistoryView> {
                         ],
                       ),
                     ),
-                  ), // end Container
-                ); // end InkWell
+                  ),
+                );
               },
             ),
           );
